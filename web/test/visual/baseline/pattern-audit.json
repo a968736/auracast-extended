@@ -604,6 +604,90 @@
       ],
       "totalBytes": 51768,
       "seamDist": 0
+    },
+    "progress": {
+      "samples": [
+        {
+          "frame": 0,
+          "bytes": 11884,
+          "ahash": "000010383e1e1c18"
+        },
+        {
+          "frame": 4,
+          "bytes": 17522,
+          "ahash": "001874fafa2c5818"
+        },
+        {
+          "frame": 8,
+          "bytes": 18202,
+          "ahash": "185a169a9a0c5818"
+        }
+      ],
+      "totalBytes": 197745,
+      "seamDist": 15
+    },
+    "hypnotoad": {
+      "samples": [
+        {
+          "frame": 0,
+          "bytes": 21561,
+          "ahash": "000024ffdb7e0000"
+        },
+        {
+          "frame": 4,
+          "bytes": 21376,
+          "ahash": "000026ffff7e0000"
+        },
+        {
+          "frame": 8,
+          "bytes": 18609,
+          "ahash": "000024ffdf7e0000"
+        }
+      ],
+      "totalBytes": 244468,
+      "seamDist": 3
+    },
+    "circuit": {
+      "samples": [
+        {
+          "frame": 0,
+          "bytes": 25983,
+          "ahash": "342c8cc802127c7c"
+        },
+        {
+          "frame": 4,
+          "bytes": 24519,
+          "ahash": "30365cc820107670"
+        },
+        {
+          "frame": 8,
+          "bytes": 24965,
+          "ahash": "38244ecd00107c74"
+        }
+      ],
+      "totalBytes": 299978,
+      "seamDist": 6
+    },
+    "emoji": {
+      "samples": [
+        {
+          "frame": 0,
+          "bytes": 16788,
+          "ahash": "0000821f5b061808"
+        },
+        {
+          "frame": 4,
+          "bytes": 13674,
+          "ahash": "2627a1b89c840000"
+        },
+        {
+          "frame": 8,
+          "bytes": 10276,
+          "ahash": "00c4401818080000"
+        }
+      ],
+      "totalBytes": 157827,
+      "seamDist": 8
     }
   },
   "text": {
