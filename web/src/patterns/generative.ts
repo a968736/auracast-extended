@@ -254,7 +254,11 @@ export async function generatePerlinFlowField(opts: PatternOptions): Promise<Uin
 
 export async function generateReactionDiffusion(opts: PatternOptions): Promise<Uint8Array[]> {
   const [canvas, ctx] = createCanvas()
-  const W = SIZE
+  // ponytail: simulate small, then upscale. Full 368px Gray-Scott costs
+  // hundreds of millions of cell updates and can take minutes on phones.
+  const W = 128
+  const simCanvas = new OffscreenCanvas(W, W)
+  const simCtx = simCanvas.getContext('2d', { willReadFrequently: true })!
   const rng = mulberry32(42)
 
   // Gray-Scott parameters (coral growth pattern)
@@ -262,7 +266,7 @@ export async function generateReactionDiffusion(opts: PatternOptions): Promise<U
   const kill = 0.062
   const dA = 1.0
   const dB = 0.5
-  const dt = 1.0
+  const dt = 0.2
 
   // Initialize grids
   let gridA = new Float32Array(W * W).fill(1)
@@ -270,24 +274,34 @@ export async function generateReactionDiffusion(opts: PatternOptions): Promise<U
   let nextA = new Float32Array(W * W)
   let nextB = new Float32Array(W * W)
 
+  // A larger centre seed prevents the field from decaying to a blank frame.
+  for (let y = W / 2 - 10; y <= W / 2 + 10; y++) {
+    for (let x = W / 2 - 10; x <= W / 2 + 10; x++) {
+      const i = Math.floor(y) * W + Math.floor(x)
+      gridA[i] = 0
+      gridB[i] = 1
+    }
+  }
+
   // Seed spots
-  const seedCount = 8
+  const seedCount = 12
   for (let s = 0; s < seedCount; s++) {
-    const cx = Math.floor(HALF + (rng() - 0.5) * RADIUS)
-    const cy = Math.floor(HALF + (rng() - 0.5) * RADIUS)
-    const r = 4 + Math.floor(rng() * 6)
+    const cx = Math.floor(W / 2 + (rng() - 0.5) * W * 0.68)
+    const cy = Math.floor(W / 2 + (rng() - 0.5) * W * 0.68)
+    const r = 5 + Math.floor(rng() * 5)
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         if (dx * dx + dy * dy > r * r) continue
         const x = cx + dx, y = cy + dy
         if (x < 0 || x >= W || y < 0 || y >= W) continue
+        gridA[y * W + x] = 0
         gridB[y * W + x] = 1
       }
     }
   }
 
   // Pre-run to develop the pattern into steady state
-  const preSteps = 800
+  const preSteps = 1200
   for (let s = 0; s < preSteps; s++) {
     stepRD(gridA, gridB, nextA, nextB, W, feed, kill, dA, dB, dt)
     const tA = gridA; gridA = nextA; nextA = tA
@@ -295,8 +309,8 @@ export async function generateReactionDiffusion(opts: PatternOptions): Promise<U
   }
 
   // Generate raw pixel data, then crossfade ends for seamless loop
-  const stepsPerFrame = 12
-  const imageData = ctx.createImageData(W, W)
+  const stepsPerFrame = 8
+  const imageData = simCtx.createImageData(W, W)
   const primary = [0, 242, 255] // #00f2ff
   const crossfadeFrames = Math.max(2, Math.floor(opts.frames * 0.2))
 
@@ -329,15 +343,18 @@ export async function generateReactionDiffusion(opts: PatternOptions): Promise<U
         const wrapVal = gridSnapshots[f + crossfadeFrames][i]
         bVal = bVal * (1 - blendAlpha) + wrapVal * blendAlpha
       }
-      const b = Math.min(1, bVal * 2.5)
+      const b = Math.min(1, Math.max(0, (bVal - 0.02) * 3.2))
       const idx = i * 4
-      data[idx] = Math.floor(b * primary[0])
-      data[idx + 1] = Math.floor(b * primary[1])
-      data[idx + 2] = Math.floor(b * primary[2])
+      data[idx] = Math.floor(4 + b * primary[0])
+      data[idx + 1] = Math.floor(6 + b * primary[1])
+      data[idx + 2] = Math.floor(14 + b * primary[2])
       data[idx + 3] = 255
     }
 
-    ctx.putImageData(imageData, 0, 0)
+    simCtx.putImageData(imageData, 0, 0)
+    clear(ctx, '#04060e')
+    ctx.imageSmoothingEnabled = true
+    ctx.drawImage(simCanvas, 0, 0, SIZE, SIZE)
     circularMask(ctx)
     frames.push(await toJpeg(canvas, 0.8))
   }
@@ -360,8 +377,8 @@ function stepRD(
       const laplaceA = a[ym * W + x] + a[yp * W + x] + a[y * W + xm] + a[y * W + xp] - 4 * a[i]
       const laplaceB = b[ym * W + x] + b[yp * W + x] + b[y * W + xm] + b[y * W + xp] - 4 * b[i]
       const abb = a[i] * b[i] * b[i]
-      na[i] = a[i] + (dA * laplaceA - abb + feed * (1 - a[i])) * dt
-      nb[i] = b[i] + (dB * laplaceB + abb - (kill + feed) * b[i]) * dt
+      na[i] = Math.max(0, Math.min(1, a[i] + (dA * laplaceA - abb + feed * (1 - a[i])) * dt))
+      nb[i] = Math.max(0, Math.min(1, b[i] + (dB * laplaceB + abb - (kill + feed) * b[i]) * dt))
     }
   }
 }

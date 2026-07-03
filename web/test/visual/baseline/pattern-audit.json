@@ -588,22 +588,22 @@
       "samples": [
         {
           "frame": 0,
-          "bytes": 4314,
-          "ahash": "ffffffffffffffff"
+          "bytes": 14522,
+          "ahash": "00061e736b7c3e00"
         },
         {
           "frame": 4,
-          "bytes": 4314,
-          "ahash": "ffffffffffffffff"
+          "bytes": 14651,
+          "ahash": "00061e736b7c3e00"
         },
         {
           "frame": 8,
-          "bytes": 4314,
-          "ahash": "ffffffffffffffff"
+          "bytes": 14760,
+          "ahash": "00061e736b783e00"
         }
       ],
-      "totalBytes": 51768,
-      "seamDist": 0
+      "totalBytes": 176203,
+      "seamDist": 5
     },
     "progress": {
       "samples": [
