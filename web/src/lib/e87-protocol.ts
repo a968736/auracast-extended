@@ -1498,13 +1498,13 @@ export async function getScreenInfoE87(
 
 // ─── File path response builder ───
 
-function buildFilePathResponse(deviceSeq: number, uploadMode: UploadMode): Uint8Array {
+function buildFilePathResponse(deviceSeq: number, uploadMode: UploadMode, now = new Date()): Uint8Array {
   // 'text' mode produces an .avi for animated effects. The App layer rewrites
   // the device-facing mode to 'image' when the prepared payload is a single
   // still JPEG (textEffect === 'static'), so .jpg is also handled correctly.
+  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
   const ext = (uploadMode === 'image' || uploadMode === 'qr') ? '.jpg' : '.avi'
-  // ponytail: fixed final name so repeated tests overwrite one gallery item instead of filling E01 flash.
-  const devicePath = `\u555Cauracast${ext}`
+  const devicePath = `\u555C${dateStr}${ext}`
   const pathUtf16 = new Uint8Array(devicePath.length * 2 + 2)
   for (let ci = 0; ci < devicePath.length; ci++) {
     const code = devicePath.charCodeAt(ci)
@@ -1610,13 +1610,15 @@ export async function writeFileE87(opts: UploadOptions): Promise<void> {
 
   let fileCompleteAutoRespond = false
   let fileCompleteHandled = false
+  const finalPathDate = new Date()
   let uploadClosed = false
   let lastSeqForAbort = 0
 
   // Auto-responder for cmd 0x20 (FILE_COMPLETE) - the device has a tight
-  // timeout (~100ms) so we respond directly in the event handler.
+  // timeout (~100ms) so we respond directly in the event handler. A repeated
+  // request means the badge did not accept the prior response, so resend it.
   const autoResponder = (event: Event) => {
-    if (!fileCompleteAutoRespond || fileCompleteHandled) return
+    if (!fileCompleteAutoRespond) return
     const target = event.target as BluetoothRemoteGATTCharacteristic
     const value = target.value
     if (!value) return
@@ -1625,7 +1627,7 @@ export async function writeFileE87(opts: UploadOptions): Promise<void> {
     if (frame && frame.cmd === 0x20 && frame.flag === 0xc0) {
       fileCompleteHandled = true
       const deviceSeq = frame.body[0] ?? 0
-      const respBody = buildFilePathResponse(deviceSeq, uploadMode)
+      const respBody = buildFilePathResponse(deviceSeq, uploadMode, finalPathDate)
       const respFrame = buildE87Frame(0x00, 0x20, respBody)
       log(`AUTO-RESPOND cmd 0x20: seq=${deviceSeq}, sending path response (${respFrame.length} bytes)`)
       characteristic.writeValueWithoutResponse(new Uint8Array(respFrame)).then(() => {
@@ -1953,7 +1955,7 @@ export async function writeFileE87(opts: UploadOptions): Promise<void> {
           const deviceSeq20 = frame.body[0] ?? seq
           log(`Received FILE_COMPLETE cmd 0x20 (seq=${deviceSeq20}). Auto-responded: ${fileCompleteHandled}`)
           if (!fileCompleteHandled) {
-            await sendE87Frame(0x00, 0x20, buildFilePathResponse(deviceSeq20, uploadMode))
+            await sendE87Frame(0x00, 0x20, buildFilePathResponse(deviceSeq20, uploadMode, finalPathDate))
             fileCompleteHandled = true
             log('Path response sent.')
           }
